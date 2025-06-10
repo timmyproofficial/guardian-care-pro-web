@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 import {
   Building2,
   Users,
@@ -99,6 +100,7 @@ const organizationService = {
 
 export default function OrganizationsPage() {
   const [searchTerm, setSearchTerm] = useState("");
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
   // Fetch organizations data
@@ -381,7 +383,13 @@ export default function OrganizationsPage() {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() =>
+                          navigate(
+                            `/support-worker/organizations/${organization._id}`
+                          )
+                        }
+                      >
                         <Eye className="w-4 h-4 mr-2" />
                         View Details
                       </DropdownMenuItem>
@@ -522,6 +530,11 @@ export default function OrganizationsPage() {
                     variant="outline"
                     size="sm"
                     className="flex-1 border-[#1e3b93]/20 text-[#1e3b93] hover:bg-[#1e3b93]/10"
+                    onClick={() =>
+                      navigate(
+                        `/support-worker/organizations/${organization._id}`
+                      )
+                    }
                   >
                     <Eye className="w-4 h-4 mr-2" />
                     View Details
