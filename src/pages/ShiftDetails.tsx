@@ -23,7 +23,7 @@ import {
   AlertTriangle,
 } from "lucide-react";
 import shiftService from "@/api/services/shiftService";
-import { Shift, ShiftStatus, ServiceType } from "@/entities/Shift";
+import { Shift, ShiftStatus, ServiceTypeId } from "@/entities/Shift";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 
@@ -85,11 +85,11 @@ export default function ShiftDetails() {
   };
 
   // Format service type for display
-  const formatServiceType = (serviceType: ServiceType) => {
-    return serviceType
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (str) => str.toUpperCase())
-      .trim();
+  const formatServiceType = (serviceTypeId: ServiceTypeId | undefined) => {
+    if (!serviceTypeId || !serviceTypeId.name) {
+      return "Unknown Service";
+    }
+    return serviceTypeId.name;
   };
 
   // Get shift duration
@@ -219,7 +219,7 @@ export default function ShiftDetails() {
         <div>
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-3xl font-bold tracking-tight text-gray-900">
-              {formatServiceType(shift.serviceType)}
+              {formatServiceType(shift.serviceTypeId)}
             </h1>
             {shift.recurrence?.pattern !== "none" && (
               <Badge variant="outline" className="gap-1">
@@ -351,7 +351,7 @@ export default function ShiftDetails() {
                 </div>
                 <div className="mt-4">
                 <Badge className="bg-guardian">
-                    {formatServiceType(shift.serviceType)}
+                    {formatServiceType(shift.serviceTypeId)}
                 </Badge>
                 </div>
               </div>
