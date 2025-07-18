@@ -1,5 +1,12 @@
 import { useState } from "react";
-import { X, ExternalLink, Edit, User } from "lucide-react";
+import {
+	X,
+	ExternalLink,
+	Edit,
+	User,
+	ChevronDown,
+	CheckCircle,
+} from "lucide-react";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -78,7 +85,7 @@ const IncidentDetailsModal = ({
 	return (
 		<>
 			<Dialog.Portal>
-				<Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-50" />
+				<Dialog.Overlay className="fixed inset-0 bg-black bg-opacity-10" />
 				<Dialog.Content className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
 					<div className="flex items-center justify-between p-6 border-b border-gray-200">
 						<Dialog.Title className="text-xl font-semibold text-gray-900">
@@ -242,11 +249,28 @@ const IncidentDetailsModal = ({
 									<Select.Value />
 									Change Status
 								</Select.Trigger>
-								<Select.Content className="bg-white py-3 px-2 rounded-lg shadow-lg border border-gray-200">
-									<Select.Item value="OPEN">Open</Select.Item>
-									<Select.Item value="IN_REVIEW">In Review</Select.Item>
-									<Select.Item value="REJECTED">Rejected</Select.Item>
-								</Select.Content>
+								<Select.Portal>
+									<Select.Content
+										className="overflow-hidden bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+										position="popper"
+										sideOffset={5}
+									>
+										<Select.ScrollUpButton className="flex items-center justify-center h-6 bg-white text-gray-400 cursor-default">
+											<ChevronDown className="h-4 w-4 rotate-180" />
+										</Select.ScrollUpButton>
+										<Select.Viewport className="p-1">
+											<Select.Item className="py-1" value="OPEN">
+												Open
+											</Select.Item>
+											<Select.Item className="py-1" value="IN_REVIEW">
+												In Review
+											</Select.Item>
+											<Select.Item className="py-1" value="REJECTED">
+												Rejected
+											</Select.Item>
+										</Select.Viewport>
+									</Select.Content>
+								</Select.Portal>
 							</Select.Root>
 						)}
 

@@ -41,6 +41,12 @@ import { adminUserService } from "@/api/services/adminUserService";
 import chatServices from "@/api/services/chatService";
 import { useQuery } from "@tanstack/react-query";
 
+// Import the modular components from ChatsList
+import { ChatSearchAndActions } from "@/components/chat/ChatSearchAndActions";
+import { ChatFilters } from "@/components/chat/ChatFilters";
+import { ConversationItem } from "@/components/chat/ConversationItem";
+import { GroupChatModal } from "@/components/chat/GroupChatModal";
+
 export default function ChatView() {
 	const { user } = useAuth();
 	const { conversationId } = useParams();
@@ -69,10 +75,9 @@ export default function ChatView() {
 	const [isSending, setIsSending] = useState(false);
 	const [isLoadingMessages, setIsLoadingMessages] = useState(false);
 	const [isLoadingConversations, setIsLoadingConversations] = useState(true);
-	const [isCreatingChat, setIsCreatingChat] = useState(false);
-	const [chatType, setChatType] = useState<"direct" | "group" | null>(null);
+	const [isCreatingDirectChat, setIsCreatingDirectChat] = useState(false);
+	const [isCreatingGroupChat, setIsCreatingGroupChat] = useState(false);
 	const [selectedUsers, setSelectedUsers] = useState<string[]>([]);
-	const [groupName, setGroupName] = useState("");
 
 	const {
 		data: all_users = [],
@@ -83,18 +88,16 @@ export default function ChatView() {
 		queryFn: async () => {
 			if (user.role === "participant") {
 				const workers = await chatServices.getMySupportWorkers();
-
 				console.log("supportworkers: ", workers);
-
 				return workers;
 			}
 			if (user.role === "admin") {
 				const workers = await adminUserService.getWorkers();
-				const partcipants = await adminUserService.getParticipants();
-
-				const users = [...workers.users, ...partcipants.users];
+				const participants = await adminUserService.getParticipants();
+				const users = [...workers.users, ...participants.users];
 				return users;
 			}
+			return [];
 		},
 	});
 
@@ -170,13 +173,18 @@ export default function ChatView() {
 		}
 	}, [chatConversations, conversationId]);
 
-	const handleChatSelect = (chatId: string) => {
-		if (user.role === "supportWorker") {
-			navigate(`/support-worker/chat/${chatId}`);
-		} else if (user.role === "participant") {
-			navigate(`/participant/chat/${chatId}`);
-		} else {
-			navigate(`/admin/chat/${chatId}`);
+	const handleChatClick = (chatId: string) => {
+		const tokens = tokenStorage.getTokens();
+		const conv = chatConversations.find((conv) => conv._id === chatId) || null;
+		if (tokens?.access?.token) {
+			setCurrentConversation(conv);
+			const basePath =
+				user.role === "supportWorker"
+					? "/support-worker"
+					: user.role === "participant"
+					? "/participant"
+					: "/admin";
+			navigate(`${basePath}/chat/${conv._id}`);
 		}
 	};
 
@@ -185,13 +193,18 @@ export default function ChatView() {
 		if (!tokens?.access?.token) return;
 
 		try {
+			setLoading(true);
 			const newConversation = await createNewConversation(
 				"direct",
 				[userId],
-				tokens.access.token
+				tokens.access.token,
+				"Direct Chat",
+				"Direct messaging",
+				organizations[0]?._id
 			);
 
 			if (newConversation) {
+				setCurrentConversation(newConversation);
 				if (user.role === "supportWorker") {
 					navigate(`/support-worker/chat/${newConversation._id}`);
 				} else if (user.role === "participant") {
@@ -202,7 +215,55 @@ export default function ChatView() {
 			}
 		} catch (error) {
 			console.error("Failed to create direct chat:", error);
+		} finally {
+			setLoading(false);
+			setIsCreatingDirectChat(false);
 		}
+	};
+
+	const handleCreateGroupChat = async (data: {
+		name: string;
+		description: string;
+		selectedUsers: string[];
+	}) => {
+		const tokens = tokenStorage.getTokens();
+		if (!tokens?.access?.token) return;
+
+		try {
+			setLoading(true);
+			const newConversation = await createNewConversation(
+				"group",
+				data.selectedUsers,
+				tokens.access.token,
+				data.name,
+				data.description,
+				organizations[0]?._id
+			);
+
+			if (newConversation) {
+				setCurrentConversation(newConversation);
+				if (user.role === "supportWorker") {
+					navigate(`/support-worker/chat/${newConversation._id}`);
+				} else if (user.role === "participant") {
+					navigate(`/participant/chat/${newConversation._id}`);
+				} else {
+					navigate(`/admin/chat/${newConversation._id}`);
+				}
+			}
+		} catch (error) {
+			console.error("Failed to create group chat:", error);
+		} finally {
+			setLoading(false);
+			setIsCreatingGroupChat(false);
+		}
+	};
+
+	const toggleUserSelection = (userId: string) => {
+		setSelectedUsers((prev) =>
+			prev.includes(userId)
+				? prev.filter((id) => id !== userId)
+				: [...prev, userId]
+		);
 	};
 
 	const handleSendMessage = async () => {
@@ -285,6 +346,24 @@ export default function ChatView() {
 		return matchesSearch && matchesFilter;
 	});
 
+	const filters = [
+		{
+			key: "all",
+			label: "All Chats",
+			count: chatConversations.length,
+		},
+		{
+			key: "direct",
+			label: "Individual",
+			count: chatConversations.filter((c) => c.type === "direct").length,
+		},
+		{
+			key: "group",
+			label: "Groups",
+			count: chatConversations.filter((c) => c.type === "group").length,
+		},
+	];
+
 	const getOtherMember = (conversation: IConversation) => {
 		return conversation.members.find((member) => member.userId._id !== user._id)
 			?.userId;
@@ -294,69 +373,8 @@ export default function ChatView() {
 		return onlineUsers.some((user) => user._id === userId);
 	};
 
-	const toggleUserSelection = (userId: string) => {
-		if (chatType === "direct") {
-			setSelectedUsers([userId]);
-			return;
-		}
-		setSelectedUsers((prev) =>
-			prev.includes(userId)
-				? prev.filter((id) => id !== userId)
-				: [...prev, userId]
-		);
-	};
-
-	const handleCreateChat = async () => {
-		const tokens = tokenStorage.getTokens();
-		if (!tokens?.access?.token) return;
-
-		try {
-			setLoading(true);
-			let newConversation;
-
-			if (chatType === "direct") {
-				newConversation = await createNewConversation(
-					"direct",
-					selectedUsers,
-					tokens.access.token,
-					"Direct Chat",
-					"Testing Direct Chat",
-					organizations[0]?._id
-				);
-			} else {
-				if (selectedUsers.length < 2) return;
-				newConversation = await createNewConversation(
-					"group",
-					selectedUsers,
-					tokens.access.token,
-					groupName,
-					"Group messaging",
-					organizations[0]?._id
-				);
-			}
-
-			if (newConversation) {
-				setCurrentConversation(newConversation);
-				if (user.role === "supportWorker") {
-					navigate(`/support-worker/chat/${newConversation._id}`);
-				} else if (user.role === "participant") {
-					navigate(`/participant/chat/${newConversation._id}`);
-				} else {
-					navigate(`/admin/chat/${newConversation._id}`);
-				}
-			}
-		} catch (error) {
-			console.error("Failed to create chat:", error);
-		} finally {
-			setLoading(false);
-			setIsCreatingChat(false);
-			setSelectedUsers([]);
-			setGroupName("");
-		}
-	};
-
 	return (
-		<div className="min-h-screen bg-[#f8fafc]">
+		<div className="min-h-screen bg-[#f8fafc] mx-4">
 			<div className="h-screen flex">
 				{/* Left Sidebar - Conversations List */}
 				<div className="w-80 bg-white border-r border-[#9395A2]/20 flex flex-col">
@@ -380,48 +398,22 @@ export default function ChatView() {
 							</div>
 						</div>
 
-						{/* Search */}
-						<div className="relative mb-3">
-							<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-[#9395A2]" />
-							<Input
-								placeholder="Search conversations..."
-								value={searchQuery}
-								onChange={(e) => setSearchQuery(e.target.value)}
-								className="pl-10 h-9 border-[#9395A2] focus:border-[#008CFF]"
-							/>
-						</div>
+						{/* Reuse ChatSearchAndActions component */}
+						<ChatSearchAndActions
+							searchQuery={searchQuery}
+							onSearchChange={setSearchQuery}
+							onNewDirectChat={() => setIsCreatingDirectChat(true)}
+							onNewGroupChat={() => setIsCreatingGroupChat(true)}
+							showCreateActions={true}
+						/>
 
-						<div className="flex gap-2">
-							<DropdownMenu>
-								<DropdownMenuTrigger asChild>
-									<Button
-										variant="outline"
-										size="sm"
-										className="flex items-center gap-2 hover:bg-[#66C2EB20] border-[#008CFF] text-[#008CFF]"
-									>
-										<Plus className="h-4 w-4" />
-										New Chat
-									</Button>
-								</DropdownMenuTrigger>
-								<DropdownMenuContent>
-									<DropdownMenuItem
-										onClick={() => {
-											setIsCreatingChat(true);
-											setChatType("direct");
-										}}
-									>
-										Direct Message
-									</DropdownMenuItem>
-									<DropdownMenuItem
-										onClick={() => {
-											setIsCreatingChat(true);
-											setChatType("group");
-										}}
-									>
-										Group Chat
-									</DropdownMenuItem>
-								</DropdownMenuContent>
-							</DropdownMenu>
+						{/* Reuse ChatFilters component */}
+						<div className="mt-3">
+							<ChatFilters
+								selectedFilter={selectedFilter}
+								onFilterChange={setSelectedFilter}
+								filters={filters}
+							/>
 						</div>
 					</div>
 
@@ -446,88 +438,14 @@ export default function ChatView() {
 							</div>
 						) : (
 							<div className="divide-y divide-[#9395A2]/10">
-								{filteredConversations.map((conversation) => {
-									const otherMember = getOtherMember(conversation);
-									return (
-										<div
-											key={conversation._id}
-											onClick={() => handleChatSelect(conversation._id)}
-											className={`p-3 cursor-pointer transition-all duration-200 hover:bg-[#66C2EB20] ${
-												conversationId === conversation._id
-													? "bg-[#66C2EB40] border-r-2 border-[#008CFF]"
-													: ""
-											}`}
-										>
-											<div className="flex items-center gap-3">
-												{/* Avatar */}
-												<div className="relative flex-shrink-0">
-													{conversation.type === "direct" ? (
-														<div className="relative">
-															<Avatar className="h-10 w-10 ring-2 ring-white shadow-sm">
-																<AvatarImage src={otherMember?.profileImage} />
-																<AvatarFallback className="bg-[#008CFF] text-white text-sm font-semibold">
-																	{otherMember?.firstName[0]}
-																</AvatarFallback>
-															</Avatar>
-															{otherMember && isUserOnline(otherMember._id) && (
-																<div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-[#197879] rounded-full ring-2 ring-white"></div>
-															)}
-														</div>
-													) : (
-														<div className="relative">
-															<div className="h-10 w-10 bg-[#008CFF] rounded-full flex items-center justify-center shadow-sm">
-																<Users className="h-5 w-5 text-white" />
-															</div>
-														</div>
-													)}
-												</div>
-
-												{/* Content */}
-												<div className="flex-1 min-w-0">
-													<div className="flex items-center justify-between mb-1">
-														<div className="flex items-center gap-1">
-															<h3 className="font-medium text-sm text-slate-900 truncate">
-																{conversation.type === "direct"
-																	? otherMember?.firstName
-																	: conversation.name}
-															</h3>
-														</div>
-														<div className="flex items-center gap-1">
-															{conversation.lastMessage?.timestamp && (
-																<span className="text-xs text-[#9395A2]">
-																	{formatMessageTime(
-																		conversation.lastMessage.timestamp
-																	)}
-																</span>
-															)}
-														</div>
-													</div>
-
-													<p className="text-xs truncate text-[#9395A2]">
-														{conversation.lastMessage ? (
-															<>
-																{conversation.type === "group" &&
-																	conversation.lastMessage.sender._id !==
-																		user._id && (
-																		<span className="text-[#008CFF] font-medium mr-1">
-																			{
-																				conversation.lastMessage.sender
-																					.firstName
-																			}
-																			:
-																		</span>
-																	)}
-																{conversation.lastMessage.content}
-															</>
-														) : (
-															"No messages yet"
-														)}
-													</p>
-												</div>
-											</div>
-										</div>
-									);
-								})}
+								{filteredConversations.map((conversation) => (
+									<ConversationItem
+										key={conversation._id}
+										conversation={conversation}
+										currentUserId={user._id}
+										onClick={handleChatClick}
+									/>
+								))}
 							</div>
 						)}
 					</div>
@@ -623,25 +541,7 @@ export default function ChatView() {
 									</div>
 								</div>
 							</div>
-							{/* Chat modal */}
-							{isCreatingChat && (
-								<ChatCreationModal
-									isOpen={isCreatingChat}
-									onClose={() => {
-										setIsCreatingChat(false);
-										setSelectedUsers([]);
-										setGroupName("");
-									}}
-									chatType={chatType!}
-									users={all_users}
-									selectedUsers={selectedUsers}
-									onUserSelect={toggleUserSelection}
-									groupName={groupName}
-									onGroupNameChange={setGroupName}
-									onCreate={handleCreateChat}
-									isLoading={loading}
-								/>
-							)}
+
 							{/* Messages Area */}
 							<div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[#f8fafc]">
 								{isLoadingMessages ? (
@@ -847,6 +747,34 @@ export default function ChatView() {
 					)}
 				</div>
 			</div>
+
+			{/* Direct Chat Creation Modal */}
+			{isCreatingDirectChat && (
+				<ChatCreationModal
+					isOpen={isCreatingDirectChat}
+					onClose={() => {
+						setIsCreatingDirectChat(false);
+						setSelectedUsers([]);
+					}}
+					chatType="direct"
+					users={all_users}
+					selectedUsers={selectedUsers}
+					onUserSelect={toggleUserSelection}
+					groupName=""
+					onGroupNameChange={() => {}}
+					onCreate={() => handleNewDirectChat(selectedUsers[0])}
+					isLoading={loading}
+				/>
+			)}
+
+			{/* Group Chat Creation Modal - Using the same pattern as ChatsList */}
+			<GroupChatModal
+				isOpen={isCreatingGroupChat}
+				onClose={() => setIsCreatingGroupChat(false)}
+				users={all_users}
+				onCreateGroup={handleCreateGroupChat}
+				isLoading={loading}
+			/>
 		</div>
 	);
 }

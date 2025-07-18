@@ -4,20 +4,14 @@ import {
 	Filter,
 	Plus,
 	Eye,
-	Edit,
 	Trash2,
 	CheckCircle,
-	XCircle,
 	Clock,
 	AlertTriangle,
-	Calendar,
-	Users,
-	TrendingUp,
 	FileText,
-	X,
-	User,
-	ExternalLink,
 	FilterIcon,
+	Download,
+	ChevronDown,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,15 +19,20 @@ import incidentService from "@/api/services/incidentService";
 import { IIncident, TIncidentStatus } from "@/types/incidents.types";
 import * as Dialog from "@radix-ui/react-dialog";
 import * as Select from "@radix-ui/react-select";
+import * as DropdownMenu from "@radix-ui/react-dropdown-menu";
 import { toast } from "sonner";
 import CreateIncidentModal from "@/components/CreateIncidentModal";
 import IncidentDetailsModal from "@/components/IncidentDetailsModal";
 import ResolveIncidentModal from "@/components/ResolveIncidentModal";
-import { set } from "date-fns";
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { jsPDF } from "jspdf";
+import "jspdf-autotable";
 
 const IncidentAdminDashboard = () => {
 	const { user } = useAuth();
 	const queryClient = useQueryClient();
+	const navigate = useNavigate();
 
 	// Fetch incidents
 	const {
@@ -195,6 +194,85 @@ const IncidentAdminDashboard = () => {
 		}
 	}, [searchTerm, statusFilter, severityFilter, incidentsData]);
 
+	// Download functions
+	const downloadPDF = (incidents: IIncident[]) => {
+		const doc = new jsPDF();
+
+		// Add title
+		doc.setFontSize(18);
+		doc.text("Incident Report", 14, 22);
+
+		// Add generation date
+		doc.setFontSize(10);
+		doc.text(`Generated on: ${new Date().toLocaleDateString()}`, 14, 30);
+
+		// Prepare data for table
+		const tableData = incidents.map((incident) => [
+			incident.title,
+			incident.status,
+			incident.severity,
+			`${incident.reportedBy.firstName} ${incident.reportedBy.lastName}`,
+			new Date(incident.createdAt).toLocaleDateString(),
+			incident.description.substring(0, 100) +
+				(incident.description.length > 100 ? "..." : ""),
+		]);
+
+		// Add table
+		doc.autoTable({
+			head: [
+				["Title", "Status", "Severity", "Reported By", "Date", "Description"],
+			],
+			body: tableData,
+			startY: 40,
+			styles: { fontSize: 8 },
+			headStyles: { fillColor: [23, 170, 236] },
+			margin: { top: 40 },
+		});
+
+		// Save the PDF
+		doc.save(`incidents-report-${new Date().toISOString().split("T")[0]}.pdf`);
+		toast.success("PDF downloaded successfully");
+	};
+
+	const downloadCSV = (incidents: IIncident[]) => {
+		const headers = [
+			"Title",
+			"Status",
+			"Severity",
+			"Reported By",
+			"Date",
+			"Description",
+			"Resolution Note",
+		];
+
+		const csvData = incidents.map((incident) => [
+			incident.title,
+			incident.status,
+			incident.severity,
+			`${incident.reportedBy.firstName} ${incident.reportedBy.lastName}`,
+			new Date(incident.createdAt).toLocaleDateString(),
+			incident.description.replace(/,/g, ";"), // Replace commas to avoid CSV issues
+			incident.resolutionNote || "N/A",
+		]);
+
+		const csvContent = [headers, ...csvData]
+			.map((row) => row.map((cell) => `"${cell}"`).join(","))
+			.join("\n");
+
+		const blob = new Blob([csvContent], { type: "text/csv" });
+		const url = window.URL.createObjectURL(blob);
+		const a = document.createElement("a");
+		a.href = url;
+		a.download = `incidents-report-${
+			new Date().toISOString().split("T")[0]
+		}.csv`;
+		document.body.appendChild(a);
+		a.click();
+		document.body.removeChild(a);
+		window.URL.revokeObjectURL(url);
+		toast.success("CSV downloaded successfully");
+	};
+
 	// Mutation for updating incident status
 	const updateStatusMutation = useMutation({
 		mutationFn: ({
@@ -236,20 +314,6 @@ const IncidentAdminDashboard = () => {
 			toast.error("Failed to resolve incident");
 			console.error("Error resolving incident:", error);
 			closeModal("resolve");
-		},
-	});
-
-	// Mutation for creating incident
-	const createIncidentMutation = useMutation({
-		mutationFn: (data: any) => incidentService.createIncident(data),
-		onSuccess: () => {
-			queryClient.invalidateQueries({ queryKey: ["incidents"] });
-			toast.success("Incident created successfully");
-			closeModal("create");
-		},
-		onError: (error) => {
-			toast.error("Failed to create incident");
-			console.error("Error creating incident:", error);
 		},
 	});
 
@@ -321,10 +385,6 @@ const IncidentAdminDashboard = () => {
 		});
 	};
 
-	const handleCreateIncident = (data: any) => {
-		createIncidentMutation.mutate(data);
-	};
-
 	const handleDeleteIncident = () => {
 		if (incidentToDelete) {
 			deleteIncidentMutation.mutate(incidentToDelete._id);
@@ -333,7 +393,11 @@ const IncidentAdminDashboard = () => {
 
 	// Check if user can delete incident
 	const canDeleteIncident = (incident: IIncident) => {
-		if (user?.role === "admin") return true;
+		if (
+			user?.role === "admin" ||
+			(user.role === "supportWorker" && incident.reportedBy._id === user._id)
+		)
+			return true;
 		return false;
 	};
 
@@ -369,7 +433,7 @@ const IncidentAdminDashboard = () => {
 
 	return (
 		<div className="min-h-screen" style={{ backgroundColor: "#F9FCFF" }}>
-			<div className="max-w-7xl mx-auto p-6">
+			<div className="max-w-7xl mx-4 p-6">
 				{/* Header */}
 				<div className="mb-8">
 					<h1 className="text-3xl font-bold text-gray-900 mb-2">
@@ -439,79 +503,210 @@ const IncidentAdminDashboard = () => {
 					</div>
 				)}
 
-				{/* Filters and Search */}
+				{/* Filters, Search, and Export */}
 				<div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
 					<div className="flex flex-col lg:flex-row gap-4 items-center justify-between">
 						<div className="flex flex-col sm:flex-row gap-4 w-full lg:w-auto">
 							<div className="relative">
-								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
+								<Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-guardian h-4 w-4" />
 								<input
 									type="text"
 									placeholder="Search incidents..."
-									className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#17AAEC] focus:border-transparent w-full sm:w-64"
+									className="pl-10 pr-4 py-2 border border-guardian/30 rounded-lg focus:ring-2 focus:ring-guardian focus:border-guardian w-full sm:w-64"
 									value={searchTerm}
 									onChange={(e) => setSearchTerm(e.target.value)}
 								/>
 							</div>
 
+							{/* Fixed Status Filter */}
 							<Select.Root value={statusFilter} onValueChange={setStatusFilter}>
-								<Select.Trigger className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#17AAEC] focus:border-transparent text-left flex items-center gap-2">
-									<Select.Value
-										placeholder="All Statuses"
-										defaultValue={"ALL"}
-									/>
-									<Filter size={20} color="gray" />
-									<p className="text-sm">Filter by Status</p>
+								<Select.Trigger className="inline-flex items-center justify-between text-guardian w-48 px-4 py-2 text-sm bg-white border border-guardian/30 rounded-lg hover:bg-guardian/10 hover:border-guardian/50 focus:outline-none focus:ring-2 focus:ring-[#17AAEC] focus:border-transparent">
+									<div className="flex items-center gap-2">
+										<Filter className="h-4 w-4 text-guardian" />
+										<span>
+											{statusFilter === "ALL" ? "All Statuses" : statusFilter}
+										</span>
+									</div>
+									<ChevronDown className="h-4 w-4 text-guardian" />
 								</Select.Trigger>
-								<Select.Content className="bg-white px-2 py-3 rounded-lg shadow-lg border border-gray-200">
-									<Select.Item value="ALL">All Statuses</Select.Item>
-									<Select.Item value="OPEN">Open</Select.Item>
-									<Select.Item value="IN_REVIEW">In Review</Select.Item>
-									<Select.Item value="RESOLVED">Resolved</Select.Item>
-									<Select.Item value="REJECTED">Rejected</Select.Item>
-								</Select.Content>
+								<Select.Portal>
+									<Select.Content
+										className="overflow-hidden bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+										position="popper"
+										sideOffset={5}
+									>
+										<Select.ScrollUpButton className="flex items-center justify-center h-6 bg-white text-guardian cursor-default">
+											<ChevronDown className="h-4 w-4 rotate-180" />
+										</Select.ScrollUpButton>
+										<Select.Viewport className="p-1">
+											<Select.Item
+												value="ALL"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>All Statuses</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+											<Select.Item
+												value="OPEN"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>Open</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+											<Select.Item
+												value="IN_REVIEW"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>In Review</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+											<Select.Item
+												value="RESOLVED"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>Resolved</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+											<Select.Item
+												value="REJECTED"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>Rejected</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+										</Select.Viewport>
+										<Select.ScrollDownButton className="flex items-center justify-center h-6 bg-white text-guardian cursor-default">
+											<ChevronDown className="h-4 w-4" />
+										</Select.ScrollDownButton>
+									</Select.Content>
+								</Select.Portal>
 							</Select.Root>
 
+							{/* Fixed Severity Filter */}
 							<Select.Root
 								value={severityFilter}
 								onValueChange={setSeverityFilter}
 							>
-								<Select.Trigger className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#17AAEC] focus:border-transparent text-left flex items-center gap-2">
-									<Select.Value
-										placeholder="All Severities"
-										defaultValue={"ALL"}
-									/>
-									<FilterIcon size={20} color="gray" />
-									<p className="text-sm">Filter by Severity</p>
+								<Select.Trigger className="inline-flex items-center justify-between text-guardian w-48 px-4 py-2 text-sm bg-white border border-guardian/30 rounded-lg hover:bg-guardian/10 hover:border-guardian/50 focus:outline-none focus:ring-2 focus:ring-[#17AAEC] focus:border-transparent">
+									<div className="flex items-center gap-2">
+										<FilterIcon className="h-4 w-4 text-guardian" />
+										<span>
+											{severityFilter === "ALL"
+												? "All Severities"
+												: severityFilter}
+										</span>
+									</div>
+									<ChevronDown className="h-4 w-4 text-guardian" />
 								</Select.Trigger>
-								<Select.Content className="bg-white rounded-lg px-2 py-3 shadow-lg border border-gray-200">
-									<Select.Item value="ALL">All Severities</Select.Item>
-									<Select.Item value="LOW">Low</Select.Item>
-									<Select.Item value="MEDIUM">Medium</Select.Item>
-									<Select.Item value="HIGH">High</Select.Item>
-								</Select.Content>
+								<Select.Portal>
+									<Select.Content
+										className="overflow-hidden bg-white rounded-lg shadow-lg border border-gray-200 z-50"
+										position="popper"
+										sideOffset={5}
+									>
+										<Select.ScrollUpButton className="flex items-center justify-center h-6 bg-white text-guardian cursor-default">
+											<ChevronDown className="h-4 w-4 rotate-180" />
+										</Select.ScrollUpButton>
+										<Select.Viewport className="p-1">
+											<Select.Item
+												value="ALL"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>All Severities</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+											<Select.Item
+												value="LOW"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>Low</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+											<Select.Item
+												value="MEDIUM"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>Medium</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+											<Select.Item
+												value="HIGH"
+												className="relative flex items-center px-8 py-2 text-sm text-gray-900 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											>
+												<Select.ItemText>High</Select.ItemText>
+												<Select.ItemIndicator className="absolute left-2 flex items-center justify-center">
+													<CheckCircle className="h-4 w-4" />
+												</Select.ItemIndicator>
+											</Select.Item>
+										</Select.Viewport>
+										<Select.ScrollDownButton className="flex items-center justify-center h-6 bg-white text-guardian cursor-default">
+											<ChevronDown className="h-4 w-4" />
+										</Select.ScrollDownButton>
+									</Select.Content>
+								</Select.Portal>
 							</Select.Root>
+
+							{/* Export Dropdown */}
+							<DropdownMenu.Root>
+								<DropdownMenu.Trigger asChild>
+									<Button
+										variant="outline"
+										className="flex items-center py-5 gap-2 text-guardian border-guardian/30 hover:bg-guardian/50 hover:border-guardian/40"
+									>
+										<Download className="h-4 w-4 text-guardian" />
+										Export
+										<ChevronDown className="h-4 w-4 text-guardian" />
+									</Button>
+								</DropdownMenu.Trigger>
+								<DropdownMenu.Portal>
+									<DropdownMenu.Content
+										className="min-w-32 bg-white rounded-lg shadow-lg border border-gray-200 p-1 z-50"
+										sideOffset={5}
+									>
+										<DropdownMenu.Item
+											className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											onClick={() => downloadPDF(filteredIncidents)}
+										>
+											<FileText className="h-4 w-4" />
+											Download PDF
+										</DropdownMenu.Item>
+										<DropdownMenu.Item
+											className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+											onClick={() => downloadCSV(filteredIncidents)}
+										>
+											<FileText className="h-4 w-4" />
+											Download CSV
+										</DropdownMenu.Item>
+									</DropdownMenu.Content>
+								</DropdownMenu.Portal>
+							</DropdownMenu.Root>
 						</div>
 
-						{user?.role === "supportWorker" && (
-							<Dialog.Root
-								open={modals.create}
-								onOpenChange={(open) => !open && closeModal("create")}
+						{user.role === "supportWorker" && (
+							<Button
+								className="flex items-center text-white gap-2 bg-guardian"
+								onClick={() => {
+									navigate("/support-worker/incidents/create");
+								}}
 							>
-								<Dialog.Trigger asChild>
-									<button
-										onClick={() => openModal("create")}
-										className="bg-[#17AAEC] text-white px-4 py-2 rounded-lg hover:bg-[#1599D3] transition-colors flex items-center gap-2"
-									>
-										<Plus className="h-4 w-4" />
-										Create Incident
-									</button>
-								</Dialog.Trigger>
-								<CreateIncidentModal
-									onClose={() => closeModal("create")}
-									onSubmit={handleCreateIncident}
-								/>
-							</Dialog.Root>
+								Create Incident
+							</Button>
 						)}
 					</div>
 				</div>
@@ -592,6 +787,39 @@ const IncidentAdminDashboard = () => {
 												>
 													<Eye className="h-4 w-4" />
 												</button>
+
+												{/* Download Button - Individual incident export */}
+												<DropdownMenu.Root>
+													<DropdownMenu.Trigger asChild>
+														<button
+															className="text-gray-600 hover:text-gray-800 p-1"
+															title="Download Incident"
+														>
+															<Download className="h-4 w-4" />
+														</button>
+													</DropdownMenu.Trigger>
+													<DropdownMenu.Portal>
+														<DropdownMenu.Content
+															className="min-w-32 bg-white rounded-lg shadow-lg border border-gray-200 p-1 z-50"
+															sideOffset={5}
+														>
+															<DropdownMenu.Item
+																className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+																onClick={() => downloadPDF([incident])}
+															>
+																<FileText className="h-4 w-4" />
+																PDF
+															</DropdownMenu.Item>
+															<DropdownMenu.Item
+																className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 rounded-md cursor-pointer hover:bg-gray-100 focus:bg-gray-100 focus:outline-none"
+																onClick={() => downloadCSV([incident])}
+															>
+																<FileText className="h-4 w-4" />
+																CSV
+															</DropdownMenu.Item>
+														</DropdownMenu.Content>
+													</DropdownMenu.Portal>
+												</DropdownMenu.Root>
 
 												{/* Resolve Button - Only for admin on non-resolved incidents */}
 												{canResolveIncident(incident) && (

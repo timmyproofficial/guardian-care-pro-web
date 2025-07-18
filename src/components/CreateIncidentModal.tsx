@@ -4,19 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import shiftService from "@/api/services/shiftService";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
-
-interface Shift {
-	_id: string;
-	shiftId: string;
-	participantId: {
-		firstName: string;
-		lastName: string;
-	};
-	startTime: string;
-	endTime: string;
-	serviceType: string;
-	status: string;
-}
+import type { Shift } from "@/entities/Shift";
 
 interface IncidentFormData {
 	title: string;
@@ -148,7 +136,7 @@ const CreateIncidentModal = ({
 				participant.firstName.toLowerCase().includes(searchLower)) ||
 			(hasLastName &&
 				participant.lastName.toLowerCase().includes(searchLower)) ||
-			shift.serviceType.toLowerCase().includes(searchLower)
+			shift.serviceTypeId.name.toLowerCase().includes(searchLower)
 		);
 	});
 
@@ -530,7 +518,7 @@ const CreateIncidentModal = ({
 																	: String(shift.participantId)}
 															</h3>
 															<p className="text-sm text-gray-500">
-																{shift.serviceType}
+																{shift.serviceTypeId._id}
 															</p>
 														</div>
 														<span
