@@ -63,8 +63,13 @@ import ResetPassword from "./pages/ResetPassword";
 
 import ChatsList from "./pages/ChatsList";
 import { ChatProvider } from "./contexts/ChatContext";
-import IncidentAdminDashboard from "./pages/IncidentsPage";
-
+import IncidentsPage from "./pages/IncidentsPage";
+import CreateIncidentPage from "./pages/CreateIncidentPage";
+import IncidentDetailsPage from "./pages/IncidentDetailsPage";
+import ResolveIncidentPage from "./pages/ResolveIncidentPage";
+import ProfileEditForm from "./components/layouts/ProfileEditForm";
+import SupportWorkerProfilePreview from "./pages/SupportWorkerProfilePreview";
+import SupportWorkerInvite from "./pages/SupportWorkerInvite";
 
 const queryClient = new QueryClient();
 
@@ -90,21 +95,21 @@ const AppRoutes = () => {
 		}
 	};
 
+	return (
+		<Routes>
+			{/* Landing Page - root route */}
+			<Route
+				path="/"
+				element={
+					user ? <Navigate to={getDefaultRoute()} replace /> : <LandingPage />
+				}
+			/>
 
-  return (
-    <Routes>
-      {/* Landing Page - root route */}
-      <Route
-        path="/"
-        element={user ? <Navigate to={getDefaultRoute()} replace /> : <LandingPage />}
-      />
-
-      {/* Public routes */}
-      <Route
-        path="/login"
-        element={user ? <Navigate to={getDefaultRoute()} replace /> : <Login />}
-      />
-
+			{/* Public routes */}
+			<Route
+				path="/login"
+				element={user ? <Navigate to={getDefaultRoute()} replace /> : <Login />}
+			/>
 
 			<Route
 				path="/register"
@@ -121,7 +126,11 @@ const AppRoutes = () => {
 			<Route
 				path="/forgot-password"
 				element={
-					user ? <Navigate to={getDefaultRoute()} replace /> : <ForgotPassword />
+					user ? (
+						<Navigate to={getDefaultRoute()} replace />
+					) : (
+						<ForgotPassword />
+					)
 				}
 			/>
 			<Route
@@ -171,7 +180,10 @@ const AppRoutes = () => {
 							<Routes>
 								{/* <Route path="/" element={<AdminDashboard />} /> */}
 								<Route path="/" element={<AdminAnalyticsDashboard />} />
-								{/* <Route path="/analytics" element={<AdminAnalyticsDashboard />} /> */}
+								{/* <Route
+									path="/analytics"
+									element={<AdminAnalyticsDashboard />}
+								/> */}
 								<Route path="/invites" element={<InviteManagementPage />} />
 								<Route
 									path="/invites/:inviteId/details"
@@ -210,11 +222,28 @@ const AppRoutes = () => {
 								<Route path="/shifts/:id" element={<ShiftDetailView />} />
 								<Route path="/timesheets" element={<TimesheetsManagement />} />
 								<Route path="/timesheets/:id" element={<TimesheetDetail />} />
-                <Route path="/batch-invoices" element={<BatchInvoicesPage />} />
-                <Route path="/batch-invoices/:id" element={<BatchInvoiceDetailPage />} />
-								<Route path="/service-types" element={<ServiceTypesManagementPage />} />
-								<Route path="/service-types/:id" element={<ServiceTypeDetailPage />} />
-								<Route path="/incidents" element={<IncidentAdminDashboard />} />
+								<Route path="/batch-invoices" element={<BatchInvoicesPage />} />
+								<Route
+									path="/batch-invoices/:id"
+									element={<BatchInvoiceDetailPage />}
+								/>
+								<Route
+									path="/service-types"
+									element={<ServiceTypesManagementPage />}
+								/>
+								<Route
+									path="/service-types/:id"
+									element={<ServiceTypeDetailPage />}
+								/>
+								<Route path="/incidents" element={<IncidentsPage />} />
+								<Route
+									path="/incidents/:id/resolve"
+									element={<ResolveIncidentPage />}
+								/>
+								<Route
+									path="/incidents/:id"
+									element={<IncidentDetailsPage />}
+								/>
 								<Route path="/chats" element={<ChatsList />} />
 								<Route path="/chat/:workerId" element={<AdminChat />} />
 							</Routes>
@@ -230,7 +259,11 @@ const AppRoutes = () => {
 						<DashboardLayout>
 							<Routes>
 								<Route path="/" element={<GuardianDashboard />} />
-								<Route path="/incidents" element={<IncidentAdminDashboard />} />
+								<Route path="/incidents" element={<IncidentsPage />} />
+								<Route
+									path="/incidents/:id"
+									element={<IncidentDetailsPage />}
+								/>
 								<Route path="/chats" element={<ChatsList />} />
 								<Route path="/chat/:workerId" element={<AdminChat />} />
 							</Routes>
@@ -247,6 +280,12 @@ const AppRoutes = () => {
 							<Routes>
 								<Route path="/" element={<ParticipantDashboard />} />
 								<Route path="/profile" element={<ParticipantProfile />} />
+								<Route
+									path="/profile/:id"
+									element={<SupportWorkerProfilePreview />}
+								/>
+								<Route path="/invite/:id" element={<SupportWorkerInvite />} />
+								<Route path="/profile/edit" element={<ProfileEditForm />} />
 								<Route path="/shifts" element={<ParticipantShifts />} />
 								<Route
 									path="/shifts/:shiftId"
@@ -265,7 +304,15 @@ const AppRoutes = () => {
 									path="/timesheets/:id"
 									element={<ParticipantTimesheetDetails />}
 								/>
-								<Route path="/incidents" element={<IncidentAdminDashboard />} />
+								<Route path="/incidents" element={<IncidentsPage />} />
+								<Route
+									path="/incidents/:id"
+									element={<IncidentDetailsPage />}
+								/>
+								<Route
+									path="/incidents/create"
+									element={<CreateIncidentPage />}
+								/>
 								<Route path="/chats" element={<ChatsList />} />
 								<Route path="/chat/:workerId" element={<AdminChat />} />
 							</Routes>
@@ -289,6 +336,7 @@ const AppRoutes = () => {
 									element={<OrganizationDetailsPage />}
 								/>
 								<Route path="/profile" element={<SupportWorkerProfile />} />
+								<Route path="/profile/edit" element={<ProfileEditForm />} />
 								<Route
 									path="/timesheets"
 									element={<SupportWorkerTimesheets />}
@@ -297,7 +345,16 @@ const AppRoutes = () => {
 									path="/timesheets/:id"
 									element={<SupportWorkerTimesheetDetails />}
 								/>
-								<Route path="/incidents" element={<IncidentAdminDashboard />} />
+								<Route path="/incidents" element={<IncidentsPage />} />
+								<Route
+									path="/incidents/:id"
+									element={<IncidentDetailsPage />}
+								/>
+								<Route
+									path="/incidents/create"
+									element={<CreateIncidentPage />}
+								/>
+
 								<Route path="/chats" element={<ChatsList />} />
 								<Route path="/chat/:workerId" element={<AdminChat />} />
 							</Routes>
@@ -306,12 +363,10 @@ const AppRoutes = () => {
 				}
 			/>
 
-
-      {/* 404 route */}
-      <Route path="*" element={<NotFound />} />
-    </Routes>
-  );
-
+			{/* 404 route */}
+			<Route path="*" element={<NotFound />} />
+		</Routes>
+	);
 };
 
 export default function App() {
