@@ -23,7 +23,7 @@ import {
 	AlertTriangle,
 } from "lucide-react";
 import shiftService from "@/api/services/shiftService";
-import { Shift, ShiftStatus, ServiceType } from "@/entities/Shift";
+import { Shift, ShiftStatus, ServiceTypeId } from "@/entities/Shift";
 import { format, parseISO } from "date-fns";
 import { cn } from "@/lib/utils";
 import { Participant } from "@/types/user.types";
