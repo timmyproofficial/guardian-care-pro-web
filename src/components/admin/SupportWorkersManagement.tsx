@@ -92,7 +92,7 @@ const SupportWorkersPage: React.FC = () => {
     if (value === 'all' || value === '' || value === undefined || (Array.isArray(value) && value.length === 0)) {
       delete newFilters[key];
     } else {
-      newFilters[key] = value;
+      (newFilters as Record<string, unknown>)[key] = value;
     }
     
     setTempFilters(newFilters);

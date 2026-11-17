@@ -1,4 +1,11 @@
-import { Participant, SupportWorker, BaseUser } from "@/types/user.types";
+import {
+	Participant,
+	SupportWorker,
+	BaseUser,
+	Address,
+	ContactPerson,
+	Experience,
+} from "@/types/user.types";
 import { get, patch, post } from "../apiClient";
 import { ServiceType } from "@/entities/ServiceType";
 
@@ -7,6 +14,10 @@ export interface UpdateProfileData {
 	lastName?: string;
 	phone?: string;
 	bio?: string;
+	gender?: string;
+	dateOfBirth?: string | null;
+	address?: Address;
+	notificationPreferences?: string;
 	emergencyContact?: {
 		name: string;
 		relationship: string;
@@ -17,33 +28,44 @@ export interface UpdateProfileData {
 	preferredLanguages?: string[];
 	preferredGenders?: string[];
 	requiresSupervision?: boolean;
+	planManager?: ContactPerson;
+	coordinator?: ContactPerson;
+	notes?: string;
+	ndisNumber?: string;
+	onboardingComplete?: boolean;
 	// Support Worker specific
-	skills?: ServiceType[];
+	skills?: Array<Pick<ServiceType, "_id" | "name" | "code">>;
 	availability?: {
 		weekdays: Array<{
 			day: string;
-			available: boolean;
+			available?: boolean;
 			slots?: Array<{
 				start: string;
 				end: string;
 			}>;
 		}>;
-		unavailableDates?: Date[];
+		unavailableDates?: Array<string | Date>;
 	};
 	serviceAreas?: string[];
 	languages?: string[];
 	qualifications?: string[];
-	experience?: Array<{
-		title: string;
-		organization: string;
-		startDate: Date;
-		endDate?: Date;
-		description?: string;
-	}>;
-	hourlyRate?: number;
+	experience?: Experience[];
+	// The edit form keeps rates grouped; the API also accepts the flat fields below.
+	hourlyRate?:
+		| number
+		| {
+				baseRate: number;
+				weekendRate: number;
+				holidayRate: number;
+				overnightRate: number;
+		  };
 	weekendRate?: number;
 	holidayRate?: number;
 	overnightRate?: number;
+	shiftRates?: SupportWorker["shiftRates"];
+	abn?: string;
+	bankDetails?: SupportWorker["bankDetails"];
+	verificationStatus?: Partial<SupportWorker["verificationStatus"]>;
 }
 
 export class UserService {

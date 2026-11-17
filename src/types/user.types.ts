@@ -10,6 +10,21 @@ export enum EUserRole {
 // User Status type
 export type UserStatus = "active" | "pending" | "suspended" | "inactive";
 
+// Postal address
+export interface Address {
+	street: string;
+	city: string;
+	state: string;
+	postalCode: string;
+	country: string;
+}
+
+// Named contact (plan manager, coordinator)
+export interface ContactPerson {
+	name: string;
+	email: string;
+}
+
 // Base User interface with common fields
 export interface BaseUser {
 	_id: string;
@@ -31,6 +46,9 @@ export interface BaseUser {
 	createdAt: string;
 	updatedAt: string;
 	lastLogin?: string;
+	gender?: string;
+	dateOfBirth?: string | null;
+	address?: Address;
 }
 
 export type SupportWorkerSkill =
@@ -121,6 +139,12 @@ export interface SupportWorker extends BaseUser {
 	weekendRate?: number;
 	holidayRate?: number;
 	overnightRate?: number;
+	abn?: string;
+	bankDetails?: {
+		accountName: string;
+		bsb: string;
+		accountNumber: string;
+	};
 }
 
 // Participant Subscription
@@ -135,11 +159,16 @@ export interface Subscription {
 // Participant interface
 export interface Participant extends BaseUser {
 	subscription: Subscription;
-	supportNeeds: string[];
+	supportNeeds: { _id: string; name: string; code?: string }[];
 	supportCoordinators: string[];
 	preferredLanguages: string[];
 	preferredGenders: string[];
 	requiresSupervision: boolean;
+	planManager?: ContactPerson;
+	coordinator?: ContactPerson;
+	notes?: string;
+	ndisNumber?: string;
+	onboardingComplete?: boolean;
 }
 
 // Guardian interface

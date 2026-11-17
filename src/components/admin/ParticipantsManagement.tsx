@@ -73,7 +73,7 @@ const ParticipantsList: React.FC = () => {
     if (value === 'all' || value === '' || value === undefined) {
       delete newFilters[key];
     } else {
-      newFilters[key] = value;
+      (newFilters as Record<string, unknown>)[key] = value;
     }
     
     setFilters(newFilters);

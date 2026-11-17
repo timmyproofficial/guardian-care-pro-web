@@ -42,7 +42,6 @@ import {
 import { useGetTimesheet } from "@/hooks/useTimesheetHooks";
 import {
   Timesheet,
-  SERVICE_TYPE_LABELS,
   TIMESHEET_STATUS_CONFIG,
 } from "@/entities/Timesheet";
 
@@ -276,9 +275,7 @@ const ParticipantTimesheetDetails: React.FC = () => {
                               Service Type:
                             </span>
                             <span className="capitalize">
-                              {SERVICE_TYPE_LABELS[
-                                timesheet.shiftId.serviceType
-                              ] || timesheet.shiftId.serviceType}
+                              {timesheet.shiftId.serviceTypeId?.name || "N/A"}
                             </span>
                           </div>
                           <div className="flex justify-between">
@@ -757,8 +754,7 @@ const ParticipantTimesheetDetails: React.FC = () => {
                 <div className="flex justify-between">
                   <span className="text-gray-600">Service:</span>
                   <span className="font-medium capitalize">
-                    {SERVICE_TYPE_LABELS[timesheet.shiftId.serviceType] ||
-                      timesheet.shiftId.serviceType}
+                    {timesheet.shiftId.serviceTypeId?.name || "N/A"}
                   </span>
                 </div>
                 <Separator />
