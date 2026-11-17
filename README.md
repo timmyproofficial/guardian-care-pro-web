@@ -2,7 +2,7 @@
 
 Web client for **Guardian Care Pro**, a care-coordination platform that connects independent support workers with NDIS participants, their guardians and support organisations.
 
-Companion API: [guardian-care-pro-api](https://github.com/timmyproofficial/guardian-care-pro-api)
+Companion API: [guardian-care-pro-backend](https://github.com/timmyproofficial/guardian-care-pro-backend)
 
 ## Features
 
