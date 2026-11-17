@@ -1,7 +1,12 @@
 import { io, Socket } from "socket.io-client";
 
-const SOCKET_SERVER_URL =
-	"https://your-api.example.com";
+// Socket server defaults to the origin of the REST API (VITE_API_BASE_URL);
+// override with VITE_SOCKET_URL if the socket server is hosted elsewhere.
+const SOCKET_SERVER_URL: string =
+	import.meta.env.VITE_SOCKET_URL ||
+	(import.meta.env.VITE_API_BASE_URL
+		? new URL(import.meta.env.VITE_API_BASE_URL).origin
+		: "http://localhost:3000");
 
 let socket: Socket | null = null;
 let listenersInitialized = false;

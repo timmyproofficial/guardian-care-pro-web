@@ -1,37 +1,35 @@
-# Support24 Webapp
+# Guardian Care Pro — Web App
 
-## Project Overview
+Web client for **Guardian Care Pro**, a care-coordination platform that connects independent support workers with NDIS participants, their guardians and support organisations.
 
-The Support24 Webapp is a sophisticated, full-stack application designed to provide robust security and monitoring solutions. It offers a comprehensive suite of features for managing security devices, monitoring events, and ensuring the safety of your premises. Built with modern web technologies, it aims to deliver a responsive, intuitive, and powerful user experience.
+Companion API: [guardian-care-pro-api](https://github.com/timmyproofficial/guardian-care-pro-api)
 
 ## Features
 
-- **Real-time Monitoring:** Keep an eye on your security devices and events as they happen.
-- **Device Management:** Easily add, configure, and manage all your Support24 security devices.
-- **Event Logging & History:** Access detailed logs of all security events for review and analysis.
-- **User Authentication & Authorization:** Secure access with robust user management and role-based permissions.
-- **Customizable Dashboards:** Tailor your view to prioritize the information most important to you.
-- **Alerts & Notifications:** Receive timely alerts for critical events.
-- **Responsive Design:** Access the webapp seamlessly from various devices (desktop, tablet, mobile).
+- **Role-based dashboards** for admins, support workers, participants and guardians
+- **Shifts & timesheets**: view, confirm and review shifts; submit and approve timesheets
+- **Invoicing**: single and weekly batch invoices with detail views
+- **Incident reporting**: create, track and resolve incidents
+- **Organisations & invites**: manage organisations, invite and onboard support workers
+- **Service catalogue**: manage service types and rate/time bands
+- **Real-time chat** between admins and users (Socket.IO)
+- **Auth flows**: registration, login, password reset, guided profile setup
 
-## Technologies Used
+## Tech stack
 
-### Frontend
+React 18 · TypeScript · Vite · Tailwind CSS · shadcn/ui · TanStack Query · Zustand · React Hook Form + Zod · Axios · Socket.IO client
 
-- **React:** A declarative, efficient, and flexible JavaScript library for building user interfaces.
-- **TypeScript:** A typed superset of JavaScript that compiles to plain JavaScript, enhancing code quality and maintainability.
-- **Redux Toolkit:** The official, opinionated, batteries-included toolset for efficient Redux development.
-- **React Router:** Declarative routing for React.
-- **Tailwind CSS:** A utility-first CSS framework for rapidly building custom designs.
-- **Material-UI (MUI):** A comprehensive suite of UI tools to help you ship new features faster.
-- **Axios:** Promise-based HTTP client for the browser and Node.js.
-- **React Hook Form:** Performant, flexible, and extensible forms with easy-to-use validation.
-- **Yup:** JavaScript schema builder for value parsing and validation.
+## Getting started
 
-### Backend
+```bash
+npm install
+cp .env.example .env   # then point it at your API
+npm run dev
+```
 
-- **Node.js:** A JavaScript runtime built on Chrome's V8 JavaScript engine.
-- **Express.js:** A fast, unopinionated, minimalist web framework for Node.js.
-- **MongoDB:** A NoSQL document database for high performance, high availability, and easy scalability.
-- **Mongoose:** An elegant MongoDB object modeling for Node.js.
-- \*\*JWT
+### Environment variables
+
+| Variable | Description |
+|---|---|
+| `VITE_API_BASE_URL` | Base URL of the REST API, e.g. `http://localhost:3000/api/v1/v1` |
+| `VITE_SOCKET_URL` | *(optional)* Socket.IO server URL. Defaults to the API's origin. |
